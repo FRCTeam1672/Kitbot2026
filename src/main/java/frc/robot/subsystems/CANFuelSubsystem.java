@@ -12,8 +12,6 @@ import com.revrobotics.spark.SparkMax;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.RepeatCommand;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.FuelConstants.*;
 
@@ -21,17 +19,17 @@ public class CANFuelSubsystem extends SubsystemBase {
   private final SparkMax feederRoller;
   private final SparkMax intakeLauncherRoller;
 
-  /** Creates a new CANBallSubsystem. */
+  /** Creates a new CANFuelSubsystem. */
   @SuppressWarnings("removal")
   public CANFuelSubsystem() {
     // create brushed motors for each of the motors on the launcher mechanism
     intakeLauncherRoller = new SparkMax(INTAKE_LAUNCHER_MOTOR_ID, MotorType.kBrushed);
     feederRoller = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushed);
 
-    // put default values for various fuel operations onto the dashboard
-    // all methods in this subsystem pull their values from the dashbaord to allow
-    // you to tune the values easily, and then replace the values in Constants.java
-    // with your new values. For more information, see the Software Guide.
+  // Put default values for various fuel operations onto the SmartDashboard.
+  // Methods in this subsystem read these values at runtime so you can tune
+  // voltages without recompiling. When satisfied, replace the values in
+  // `Constants.java` with the tuned numbers.
     SmartDashboard.putNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE);
     SmartDashboard.putNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE);
     SmartDashboard.putNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE);
@@ -60,13 +58,15 @@ public class CANFuelSubsystem extends SubsystemBase {
         .setVoltage(SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE));
   }
 
-  // A method to set the rollers to values for ejecting fuel out the intake. Uses
-  // the same values as intaking, but in the opposite direction.
+  // Set the rollers to values for ejecting fuel back out the intake. Uses
+  // the same (but negated) values as `intake()`.
   public void eject() {
     feederRoller
         .setVoltage(-1 * SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE));
+    // Use the same dashboard key used by `intake()` for the intake/launcher
+    // roller so tuning remains consistent.
     intakeLauncherRoller
-        .setVoltage(-1 * SmartDashboard.getNumber("Intaking launcher roller value", INTAKING_INTAKE_VOLTAGE));
+        .setVoltage(-1 * SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE));
   }
 
   // A method to set the rollers to values for launching.
@@ -82,8 +82,8 @@ public class CANFuelSubsystem extends SubsystemBase {
     intakeLauncherRoller.set(0);
   }
 
-  // A method to spin up the launcher roller while spinning the feeder roller to
-  // push Fuel away from the launcher
+  // Spin up the launcher roller while spinning the feeder roller to
+  // push fuel toward the launcher. Typically used before calling `launch()`.
   public void spinUp() {
     feederRoller
         .setVoltage(SmartDashboard.getNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE));
@@ -91,8 +91,8 @@ public class CANFuelSubsystem extends SubsystemBase {
         .setVoltage(SmartDashboard.getNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
-  // A command factory to turn the spinUp method into a command that requires this
-  // subsystem
+  // Command factory that returns a command which runs `spinUp()` while
+  // scheduled.
   public Command spinUpCommand() {
     return this.run(() -> spinUp());
   }
@@ -103,39 +103,20 @@ public class CANFuelSubsystem extends SubsystemBase {
     return this.run(() -> launch());
   }
 
-  // A method to intake and store in the hopper. This multiplies
-  // the dashboard/intake constants so you can run a lower-power intake easily.
-  public void store(double scale) {
-    double feeder = SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE) * scale;
-    double intake = SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE) * scale;
+  // Intake and store in the hopper at a scaled power. `scale` should be in
+  // the range [0, 1]. The method multiplies the intake voltages read from the
+  // SmartDashboard so you can run a lower-power intake without changing the
+  // tuned values.
+  public void store(double scale1, double scale2) {
+    double feeder = SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE) * scale1;
+    double intake = SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE) * scale2;
     feederRoller.setVoltage(feeder);
     intakeLauncherRoller.setVoltage(intake);
   }
 
-  // Command factory to run store while scheduled
-  public Command storeCommand(double scale) {
-    return this.run(() -> store(scale));
-  }
-
-  /**
-   * A command factory that returns a command which continuously alternates
-   * between spinUp (for spinSeconds) and launch (for launchSeconds) while
-   * the returned command is scheduled. When the command ends or is interrupted,
-   * {@link #stop()} will be called to ensure motors are stopped.
-   *
-   * This implementation uses a repeating SequentialCommandGroup composed of
-   * timed run-commands. Adjust durations as needed.
-   */
-  public Command spinAndLaunchAlternatingCommand(double spinSeconds, double launchSeconds) {
-    // Create timed steps
-    Command spinStep = this.run(() -> spinUp()).withTimeout(spinSeconds);
-    Command launchStep = this.run(() -> launch()).withTimeout(launchSeconds);
-
-    // Sequence: spin then launch
-    SequentialCommandGroup seq = new SequentialCommandGroup(spinStep, launchStep);
-
-    // Repeat the sequence while scheduled, and ensure stop() runs on end/interruption
-    return new RepeatCommand(seq).finallyDo(() -> stop());
+  // Command factory that runs `store(scale)` while scheduled.
+  public Command storeCommand(double scale1, double scale2) {
+    return this.run(() -> store(scale1, scale2));
   }
 
   @Override

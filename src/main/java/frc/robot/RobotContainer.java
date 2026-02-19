@@ -65,13 +65,14 @@ public class RobotContainer {
  
   // While the left trigger is held, store in hopper
   driverController.L2()
-    .whileTrue(ballSubsystem.storeCommand(0.5));
+    .whileTrue(ballSubsystem.storeCommand(0.75, 0.7));
 
-  // While the right bumper is held: alternate spin-up and launch continuously.
-  // This will repeat: spin for SPIN_UP_SECONDS, then launch for LAUNCH_SECONDS,
-  // until the button is released. When released, stop() will be called.
+  // While the right bumper on the driver controller is held, spin up for 1
+  // second, then launch fuel. When the button is released, stop.
   driverController.R1()
-    .whileTrue(ballSubsystem.spinAndLaunchAlternatingCommand(SPIN_UP_SECONDS, LAUNCH_SECONDS));
+    .whileTrue(ballSubsystem.spinUpCommand().withTimeout(SPIN_UP_SECONDS)
+      .andThen(ballSubsystem.launchCommand())
+      .finallyDo(() -> ballSubsystem.stop()));
     // While the cross button is held on the driver controller, eject fuel back out
     // the intake
     driverController.cross()
