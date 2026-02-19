@@ -103,11 +103,6 @@ public class CANFuelSubsystem extends SubsystemBase {
     return this.run(() -> launch());
   }
 
-  // Command factory that runs `store(scale)` while scheduled.
-  public Command storeCommand(double scale1, double scale2) {
-    return this.run(() -> store(scale1, scale2));
-  }
-
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
