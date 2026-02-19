@@ -63,10 +63,6 @@ public class RobotContainer {
     driverController.L1()
         .whileTrue(ballSubsystem.runEnd(() -> ballSubsystem.intake(), () -> ballSubsystem.stop()));
  
-  // While the left trigger is held, store in hopper
-  driverController.L2()
-    .whileTrue(ballSubsystem.storeCommand(0.75, 0.7));
-
   // While the right bumper on the driver controller is held, spin up for 1
   // second, then launch fuel. When the button is released, stop.
   driverController.R1()

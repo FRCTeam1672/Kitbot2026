@@ -103,17 +103,6 @@ public class CANFuelSubsystem extends SubsystemBase {
     return this.run(() -> launch());
   }
 
-  // Intake and store in the hopper at a scaled power. `scale` should be in
-  // the range [0, 1]. The method multiplies the intake voltages read from the
-  // SmartDashboard so you can run a lower-power intake without changing the
-  // tuned values.
-  public void store(double scale1, double scale2) {
-    double feeder = SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE) * scale1;
-    double intake = SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE) * scale2;
-    feederRoller.setVoltage(feeder);
-    intakeLauncherRoller.setVoltage(intake);
-  }
-
   // Command factory that runs `store(scale)` while scheduled.
   public Command storeCommand(double scale1, double scale2) {
     return this.run(() -> store(scale1, scale2));
