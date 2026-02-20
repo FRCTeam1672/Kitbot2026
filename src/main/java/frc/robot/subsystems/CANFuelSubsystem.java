@@ -35,6 +35,9 @@ public class CANFuelSubsystem extends SubsystemBase {
     SmartDashboard.putNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE);
     SmartDashboard.putNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE);
     SmartDashboard.putNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber("Low Power Launching feeder roller value", LOW_POWER_LAUNCHING_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber("Low Power Launching launcher roller value", LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE);
+    SmartDashboard.putNumber("Low Power Spin-up feeder roller value", LOW_POWER_SPIN_UP_FEEDER_VOLTAGE);
 
     // create the configuration for the feeder roller, set a current limit and apply
     // the config to the controller
@@ -101,6 +104,32 @@ public class CANFuelSubsystem extends SubsystemBase {
   // subsystem
   public Command launchCommand() {
     return this.run(() -> launch());
+  }
+
+  // A method to set the rollers to low power values for launching.
+  public void lowPowerLaunch() {
+    feederRoller.setVoltage(SmartDashboard.getNumber("Low Power Launching feeder roller value", LOW_POWER_LAUNCHING_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(SmartDashboard.getNumber("Low Power Launching launcher roller value", LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
+  }
+
+  // Spin up the launcher roller at low power while spinning the feeder roller to
+  // push fuel toward the launcher. Typically used before calling `lowPowerLaunch()`.
+  public void lowPowerSpinUp() {
+    feederRoller
+        .setVoltage(SmartDashboard.getNumber("Low Power Spin-up feeder roller value", LOW_POWER_SPIN_UP_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(SmartDashboard.getNumber("Low Power Launching launcher roller value", LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
+  }
+
+  // Command factory that returns a command which runs `lowPowerSpinUp()` while scheduled.
+  public Command lowPowerSpinUpCommand() {
+    return this.run(() -> lowPowerSpinUp());
+  }
+
+  // A command factory to turn the lowPowerLaunch method into a command that requires this subsystem
+  public Command lowPowerLaunchCommand() {
+    return this.run(() -> lowPowerLaunch());
   }
 
   @Override
