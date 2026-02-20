@@ -69,10 +69,18 @@ public class RobotContainer {
     .whileTrue(ballSubsystem.spinUpCommand().withTimeout(SPIN_UP_SECONDS)
       .andThen(ballSubsystem.launchCommand())
       .finallyDo(() -> ballSubsystem.stop()));
-    // While the cross button is held on the driver controller, eject fuel back out
-    // the intake
-    driverController.cross()
-        .whileTrue(ballSubsystem.runEnd(() -> ballSubsystem.eject(), () -> ballSubsystem.stop()));
+ 
+   // While the triangle button on the driver controller is held, spin up for 0.5
+  // second, then launch fuel. When the button is released, stop.
+  driverController.triangle()
+    .whileTrue(ballSubsystem.lowPowerSpinUpCommand().withTimeout(SPIN_UP_SECONDS)
+      .andThen(ballSubsystem.lowPowerLaunchCommand())
+      .finallyDo(() -> ballSubsystem.stop()));
+ 
+      // While the cross button is held on the driver controller, eject fuel back out
+  // the intake
+  driverController.cross()
+      .whileTrue(ballSubsystem.runEnd(() -> ballSubsystem.eject(), () -> ballSubsystem.stop()));
 
     // Set the default command for the drive subsystem to the command provided by
     // factory with the values provided by the joystick axes on the driver
