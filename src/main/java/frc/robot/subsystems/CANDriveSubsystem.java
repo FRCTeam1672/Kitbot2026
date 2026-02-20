@@ -42,11 +42,11 @@ public class CANDriveSubsystem extends SubsystemBase {
     // battery voltages). Timeout of 250 ms used for configuration calls.
     leftLeader.configVoltageCompSaturation(12.0, 250);
     leftLeader.enableVoltageCompensation(true);
-    rightLeader.configVoltageCompSaturation(12.0, 250);
+    rightLeader.configVoltageCompSaturation(10.0, 250);
     rightLeader.enableVoltageCompensation(true);
     leftFollower.configVoltageCompSaturation(12.0, 250);
     leftFollower.enableVoltageCompensation(true);
-    rightFollower.configVoltageCompSaturation(12.0, 250);
+    rightFollower.configVoltageCompSaturation(10.0, 250);
     rightFollower.enableVoltageCompensation(true);
 
     // Configure followers
