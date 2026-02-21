@@ -30,14 +30,14 @@ public class CANFuelSubsystem extends SubsystemBase {
   // Methods in this subsystem read these values at runtime so you can tune
   // voltages without recompiling. When satisfied, replace the values in
   // `Constants.java` with the tuned numbers.
-    SmartDashboard.putNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE);
-    SmartDashboard.putNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE);
-    SmartDashboard.putNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber("Low Power Launching feeder roller value", LOW_POWER_LAUNCHING_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber("Low Power Launching launcher roller value", LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE);
-    SmartDashboard.putNumber("Low Power Spin-up feeder roller value", LOW_POWER_SPIN_UP_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber(INTAKING_FEEDER_KEY, INTAKING_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber(INTAKING_INTAKE_KEY, INTAKING_INTAKE_VOLTAGE);
+    SmartDashboard.putNumber(LAUNCHING_FEEDER_KEY, LAUNCHING_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber(LAUNCHING_LAUNCHER_KEY, LAUNCHING_LAUNCHER_VOLTAGE);
+    SmartDashboard.putNumber(SPINUP_FEEDER_KEY, SPIN_UP_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber(LOW_POWER_LAUNCHING_FEEDER_KEY, LOW_POWER_LAUNCHING_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber(LOW_POWER_LAUNCHING_LAUNCHER_KEY, LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE);
+    SmartDashboard.putNumber(LOW_POWER_SPINUP_FEEDER_KEY, LOW_POWER_SPIN_UP_FEEDER_VOLTAGE);
 
     // create the configuration for the feeder roller, set a current limit and apply
     // the config to the controller
@@ -55,28 +55,34 @@ public class CANFuelSubsystem extends SubsystemBase {
   }
 
   // A method to set the rollers to values for intaking
+  /**
+   * Sets the fuel intake system to intake fuel. Both feeder and intake motors
+   * operate at speeds configured in SmartDashboard or Constants.
+   */
   public void intake() {
-    feederRoller.setVoltage(SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE));
-    intakeLauncherRoller
-        .setVoltage(SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber(INTAKING_FEEDER_KEY, INTAKING_FEEDER_VOLTAGE));
+    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(INTAKING_INTAKE_KEY, INTAKING_INTAKE_VOLTAGE));
   }
 
   // Set the rollers to values for ejecting fuel back out the intake. Uses
   // the same (but negated) values as `intake()`.
+  /**
+   * Ejects fuel back out through the intake. Uses negated intake voltages
+   * to reverse the motor direction.
+   */
   public void eject() {
-    feederRoller
-        .setVoltage(-1 * SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE));
-    // Use the same dashboard key used by `intake()` for the intake/launcher
-    // roller so tuning remains consistent.
-    intakeLauncherRoller
-        .setVoltage(-1 * SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE));
+    feederRoller.setVoltage(-SmartDashboard.getNumber(INTAKING_FEEDER_KEY, INTAKING_FEEDER_VOLTAGE));
+    intakeLauncherRoller.setVoltage(-SmartDashboard.getNumber(INTAKING_INTAKE_KEY, INTAKING_INTAKE_VOLTAGE));
   }
 
   // A method to set the rollers to values for launching.
+  /**
+   * Launches fuel at full power. Both feeder and launcher motors run at full
+   * voltages configured in Constants.
+   */
   public void launch() {
-    feederRoller.setVoltage(SmartDashboard.getNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE));
-    intakeLauncherRoller
-        .setVoltage(SmartDashboard.getNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber(LAUNCHING_FEEDER_KEY, LAUNCHING_FEEDER_VOLTAGE));
+    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LAUNCHING_LAUNCHER_KEY, LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
   // A method to stop the rollers
@@ -87,47 +93,70 @@ public class CANFuelSubsystem extends SubsystemBase {
 
   // Spin up the launcher roller while spinning the feeder roller to
   // push fuel toward the launcher. Typically used before calling `launch()`.
+  /**
+   * Spins up the launcher at full power while pushing fuel toward the launcher.
+   * Feeder runs in reverse at reduced voltage. Should be followed by launch().
+   */
   public void spinUp() {
-    feederRoller
-        .setVoltage(SmartDashboard.getNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE));
-    intakeLauncherRoller
-        .setVoltage(SmartDashboard.getNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber(SPINUP_FEEDER_KEY, SPIN_UP_FEEDER_VOLTAGE));
+    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LAUNCHING_LAUNCHER_KEY, LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
   // Command factory that returns a command which runs `spinUp()` while
   // scheduled.
+  /**
+   * Creates a command that runs spinUp() while scheduled.
+   * @return a spinup command
+   */
   public Command spinUpCommand() {
     return this.run(() -> spinUp());
   }
 
   // A command factory to turn the launch method into a command that requires this
   // subsystem
+  /**
+   * Creates a command that runs launch() while scheduled.
+   * @return a launch command
+   */
   public Command launchCommand() {
     return this.run(() -> launch());
   }
 
   // A method to set the rollers to low power values for launching.
+  /**
+   * Launches fuel at reduced power for shorter-range or gentler launches.
+   * Lower voltages reduce stress on motors and conserve energy.
+   */
   public void lowPowerLaunch() {
-    feederRoller.setVoltage(SmartDashboard.getNumber("Low Power Launching feeder roller value", LOW_POWER_LAUNCHING_FEEDER_VOLTAGE));
-    intakeLauncherRoller
-        .setVoltage(SmartDashboard.getNumber("Low Power Launching launcher roller value", LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_LAUNCHING_FEEDER_KEY, LOW_POWER_LAUNCHING_FEEDER_VOLTAGE));
+    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_LAUNCHING_LAUNCHER_KEY, LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
   // Spin up the launcher roller at low power while spinning the feeder roller to
   // push fuel toward the launcher. Typically used before calling `lowPowerLaunch()`.
+  /**
+   * Spins up the launcher at low power while pushing fuel toward the launcher.
+   * Used before lowPowerLaunch() for reduced-power launching.
+   */
   public void lowPowerSpinUp() {
-    feederRoller
-        .setVoltage(SmartDashboard.getNumber("Low Power Spin-up feeder roller value", LOW_POWER_SPIN_UP_FEEDER_VOLTAGE));
-    intakeLauncherRoller
-        .setVoltage(SmartDashboard.getNumber("Low Power Launching launcher roller value", LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_SPINUP_FEEDER_KEY, LOW_POWER_SPIN_UP_FEEDER_VOLTAGE));
+    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_LAUNCHING_LAUNCHER_KEY, LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
   // Command factory that returns a command which runs `lowPowerSpinUp()` while scheduled.
+  /**
+   * Creates a command that runs lowPowerSpinUp() while scheduled.
+   * @return a low-power spinup command
+   */
   public Command lowPowerSpinUpCommand() {
     return this.run(() -> lowPowerSpinUp());
   }
 
   // A command factory to turn the lowPowerLaunch method into a command that requires this subsystem
+  /**
+   * Creates a command that runs lowPowerLaunch() while scheduled.
+   * @return a low-power launch command
+   */
   public Command lowPowerLaunchCommand() {
     return this.run(() -> lowPowerLaunch());
   }

@@ -10,10 +10,10 @@ import frc.robot.subsystems.CANFuelSubsystem;
 import frc.robot.subsystems.CANDriveSubsystem;
 
 public final class Autos {
-  // Example autonomous command which drives forward for 1 second.
+  // Example autonomous command which drives forward for 0.25 seconds.
   public static final Command exampleAuto(CANDriveSubsystem driveSubsystem, CANFuelSubsystem ballSubsystem) {
     return new SequentialCommandGroup(
-        // Drive backwards for .25 seconds. The driveArcadeAuto command factory
+        // Drive forward for 0.25 seconds at 50% speed. The driveArcade command factory
         // creates a command which does not end which allows us to control
         // the timing using the withTimeout decorator
         driveSubsystem.driveArcade(() -> 0.5, () -> 0).withTimeout(.25),

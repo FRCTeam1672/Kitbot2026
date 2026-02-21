@@ -9,6 +9,7 @@ import java.util.function.DoubleSupplier;
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.DriveConstants.*;
@@ -32,16 +33,11 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightLeader.configFactoryDefault();
     rightFollower.configFactoryDefault();
 
-    // Optional: set voltage compensation (helps consistent behavior across
-    // battery voltages). Timeout of 250 ms used for configuration calls.
-    leftLeader.configVoltageCompSaturation(12.0, 250);
-    leftLeader.enableVoltageCompensation(true);
-    rightLeader.configVoltageCompSaturation(12.0, 250);
-    rightLeader.enableVoltageCompensation(true);
-    leftFollower.configVoltageCompSaturation(12.0, 250);
-    leftFollower.enableVoltageCompensation(true);
-    rightFollower.configVoltageCompSaturation(12.0, 250);
-    rightFollower.enableVoltageCompensation(true);
+    // Configure voltage compensation for all motors
+    configureVoltageCompensation(leftLeader);
+    configureVoltageCompensation(leftFollower);
+    configureVoltageCompensation(rightLeader);
+    configureVoltageCompensation(rightFollower);
 
     // Configure followers
     leftFollower.follow(leftLeader);
@@ -60,21 +56,51 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightFollower.setInverted(false);
   }
 
-  @Override
-  public void periodic() {
-    // No-op
+  /**
+   * Configures voltage compensation for a motor controller.
+   * 
+   * @param motor the motor controller to configure
+   */
+  private void configureVoltageCompensation(WPI_TalonSRX motor) {
+    motor.configVoltageCompSaturation(12.0, 250);
+    motor.enableVoltageCompensation(true);
   }
 
-  // Command factory to create command to drive the robot with joystick inputs.
+  @Override
+  public void periodic() {
+    // Log drivetrain motor outputs for debugging and tuning
+    SmartDashboard.putNumber(LEFTSIDE_OUTPUT_KEY, leftLeader.get());
+    SmartDashboard.putNumber(RIGHTSIDE_OUTPUT_KEY, rightLeader.get());
+  }
+
+  /**
+   * Creates a command to drive the robot using arcade drive with joystick input.
+   * Applies deadzone filtering to prevent drift and power scaling for easier control.
+   * 
+   * @param xSpeed supplier providing forward/backward speed (-1.0 to 1.0)
+   * @param zRotation supplier providing rotation speed (-1.0 to 1.0)
+   * @return a command that drives the robot in arcade mode
+   */
   public Command driveArcade(DoubleSupplier xSpeed, DoubleSupplier zRotation) {
     return this.run(() -> {
-      double xSpeedValue = xSpeed.getAsDouble();
-      double zRotationValue = zRotation.getAsDouble();
+      double xSpeedValue = applyDeadzone(xSpeed.getAsDouble());
+      double zRotationValue = applyDeadzone(zRotation.getAsDouble());
       
       // Apply right side power scaling to compensate for mechanical imbalance
       rightLeader.set(limitOutput((xSpeedValue + zRotationValue) * RIGHT_SIDE_POWER_SCALING));
       leftLeader.set(limitOutput(xSpeedValue - zRotationValue));
     });
+  }
+
+  /**
+   * Applies deadzone filtering to joystick input to prevent drift.
+   * Values within the deadzone threshold are treated as zero.
+   * 
+   * @param value the raw joystick value
+   * @return the deadzone-filtered value
+   */
+  private double applyDeadzone(double value) {
+    return Math.abs(value) < JOYSTICK_DEADZONE ? 0.0 : value;
   }
 
   private double limitOutput(double value) {
