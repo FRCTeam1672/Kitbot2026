@@ -25,6 +25,11 @@ public final class Constants {
     // Current limit for drivetrain motors. 60A is a reasonable maximum to reduce
     // likelihood of tripping breakers or damaging CIM motors
     public static final int DRIVE_MOTOR_CURRENT_LIMIT = 60;
+
+    // Power scaling factor for right side to compensate for mechanical imbalance.
+    // Adjust this value between 0.0 and 1.0 to reduce right side power.
+    // Start with 0.9 and adjust based on robot behavior.
+    public static final double RIGHT_SIDE_POWER_SCALING = 0.9;
   }
 
   public static final class FuelConstants {
