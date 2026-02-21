@@ -19,129 +19,105 @@ public class CANFuelSubsystem extends SubsystemBase {
   private final SparkMax feederRoller;
   private final SparkMax intakeLauncherRoller;
 
-  /** Creates a new CANFuelSubsystem. */
+  /** Creates a new CANBallSubsystem. */
   @SuppressWarnings("removal")
   public CANFuelSubsystem() {
-    // Create brushed motors for each of the motors on the launcher mechanism
+    // create brushed motors for each of the motors on the launcher mechanism
     intakeLauncherRoller = new SparkMax(INTAKE_LAUNCHER_MOTOR_ID, MotorType.kBrushed);
     feederRoller = new SparkMax(FEEDER_MOTOR_ID, MotorType.kBrushed);
 
-    // Configure the feeder roller with current limit and apply config
+    // put default values for various fuel operations onto the dashboard
+    // all methods in this subsystem pull their values from the dashbaord to allow
+    // you to tune the values easily, and then replace the values in Constants.java
+    // with your new values. For more information, see the Software Guide.
+    SmartDashboard.putNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE);
+    SmartDashboard.putNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE);
+    SmartDashboard.putNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber("Hopper feeder roller value", HOPPER_FEEDER_VOLTAGE);
+    SmartDashboard.putNumber("Hopper intake roller value", HOPPER_INTAKE_VOLTAGE);
+
+    // create the configuration for the feeder roller, set a current limit and apply
+    // the config to the controller
     SparkMaxConfig feederConfig = new SparkMaxConfig();
     feederConfig.smartCurrentLimit(FEEDER_MOTOR_CURRENT_LIMIT);
     feederRoller.configure(feederConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    // Configure the launcher roller with inverted direction and current limit
+    // create the configuration for the launcher roller, set a current limit, set
+    // the motor to inverted so that positive values are used for both intaking and
+    // launching, and apply the config to the controller
     SparkMaxConfig launcherConfig = new SparkMaxConfig();
     launcherConfig.inverted(true);
     launcherConfig.smartCurrentLimit(LAUNCHER_MOTOR_CURRENT_LIMIT);
     intakeLauncherRoller.configure(launcherConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // Put default values for various fuel operations onto the SmartDashboard.
-    // Methods in this subsystem read these values at runtime so you can tune
-    // voltages without recompiling. When satisfied, replace the values in
-    // `Constants.java` with the tuned numbers.
-    SmartDashboard.putNumber(INTAKING_FEEDER_KEY, INTAKING_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber(INTAKING_INTAKE_KEY, INTAKING_INTAKE_VOLTAGE);
-    SmartDashboard.putNumber(LAUNCHING_FEEDER_KEY, LAUNCHING_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber(LAUNCHING_LAUNCHER_KEY, LAUNCHING_LAUNCHER_VOLTAGE);
-    SmartDashboard.putNumber(SPINUP_FEEDER_KEY, SPIN_UP_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber(LOW_POWER_LAUNCHING_FEEDER_KEY, LOW_POWER_LAUNCHING_FEEDER_VOLTAGE);
-    SmartDashboard.putNumber(LOW_POWER_LAUNCHING_LAUNCHER_KEY, LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE);
-    SmartDashboard.putNumber(LOW_POWER_SPINUP_FEEDER_KEY, LOW_POWER_SPIN_UP_FEEDER_VOLTAGE);
   }
 
-  /**
-   * Sets the fuel intake system to intake fuel. Both feeder and intake motors
-   * operate at speeds configured in SmartDashboard or Constants.
-   */
+  // A method to set the rollers to values for intaking
   public void intake() {
-    feederRoller.setVoltage(SmartDashboard.getNumber(INTAKING_FEEDER_KEY, INTAKING_FEEDER_VOLTAGE));
-    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(INTAKING_INTAKE_KEY, INTAKING_INTAKE_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(SmartDashboard.getNumber("Intaking intake roller value", INTAKING_INTAKE_VOLTAGE));
   }
 
-  /**
-   * Ejects fuel back out through the intake. Uses negated intake voltages
-   * to reverse the motor direction.
-   */
+  // A method to set the rollers to values for hopper intake (half power)
+  public void hopperIntake() {
+    feederRoller.setVoltage(SmartDashboard.getNumber("Hopper feeder roller value", HOPPER_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(SmartDashboard.getNumber("Hopper intake roller value", HOPPER_INTAKE_VOLTAGE));
+  }
+
+  // A method to set the rollers to values for ejecting fuel out the intake. Uses
+  // the same values as intaking, but in the opposite direction.
   public void eject() {
-    feederRoller.setVoltage(-SmartDashboard.getNumber(INTAKING_FEEDER_KEY, INTAKING_FEEDER_VOLTAGE));
-    intakeLauncherRoller.setVoltage(-SmartDashboard.getNumber(INTAKING_INTAKE_KEY, INTAKING_INTAKE_VOLTAGE));
+    feederRoller
+        .setVoltage(-1 * SmartDashboard.getNumber("Intaking feeder roller value", INTAKING_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(-1 * SmartDashboard.getNumber("Intaking launcher roller value", INTAKING_INTAKE_VOLTAGE));
   }
 
-  /**
-   * Launches fuel at full power. Both feeder and launcher motors run at full
-   * voltages configured in Constants.
-   */
+  // A method to set the rollers to values for launching.
   public void launch() {
-    feederRoller.setVoltage(SmartDashboard.getNumber(LAUNCHING_FEEDER_KEY, LAUNCHING_FEEDER_VOLTAGE));
-    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LAUNCHING_LAUNCHER_KEY, LAUNCHING_LAUNCHER_VOLTAGE));
+    feederRoller.setVoltage(SmartDashboard.getNumber("Launching feeder roller value", LAUNCHING_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(SmartDashboard.getNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
-  /**
-   * Stops both rollers immediately.
-   */
+  // A method to stop the rollers
   public void stop() {
     feederRoller.set(0);
     intakeLauncherRoller.set(0);
   }
 
-  /**
-   * Spins up the launcher at full power while pushing fuel toward the launcher.
-   * Feeder runs in reverse at reduced voltage. Should be followed by launch().
-   */
+  // A method to spin up the launcher roller while spinning the feeder roller to
+  // push Fuel away from the launcher
   public void spinUp() {
-    feederRoller.setVoltage(SmartDashboard.getNumber(SPINUP_FEEDER_KEY, SPIN_UP_FEEDER_VOLTAGE));
-    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LAUNCHING_LAUNCHER_KEY, LAUNCHING_LAUNCHER_VOLTAGE));
+    feederRoller
+        .setVoltage(SmartDashboard.getNumber("Spin-up feeder roller value", SPIN_UP_FEEDER_VOLTAGE));
+    intakeLauncherRoller
+        .setVoltage(SmartDashboard.getNumber("Launching launcher roller value", LAUNCHING_LAUNCHER_VOLTAGE));
   }
 
-  /**
-   * Creates a command that runs spinUp() while scheduled.
-   * @return a spinup command
-   */
+  // A command factory to turn the spinUpCommand method into a command that requires this
+  // subsystem
   public Command spinUpCommand() {
     return this.run(() -> spinUp());
   }
 
-  /**
-   * Creates a command that runs launch() while scheduled.
-   * @return a launch command
-   */
+  // A command factory to turn the launchCommand method into a command that requires this
+  // subsystem
   public Command launchCommand() {
     return this.run(() -> launch());
   }
 
-  /**
-   * Launches fuel at reduced power for shorter-range or gentler launches.
-   * Lower voltages reduce stress on motors and conserve energy.
-   */
-  public void lowPowerLaunch() {
-    feederRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_LAUNCHING_FEEDER_KEY, LOW_POWER_LAUNCHING_FEEDER_VOLTAGE));
-    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_LAUNCHING_LAUNCHER_KEY, LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
+  // A command factory to turn the hopperIntake method into a command that requires this
+  // subsystem
+  public Command hopperIntakeCommand() {
+    return this.runEnd(() -> hopperIntake(), () -> stop());
   }
 
-  /**
-   * Spins up the launcher at low power while pushing fuel toward the launcher.
-   * Used before lowPowerLaunch() for reduced-power launching.
-   */
-  public void lowPowerSpinUp() {
-    feederRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_SPINUP_FEEDER_KEY, LOW_POWER_SPIN_UP_FEEDER_VOLTAGE));
-    intakeLauncherRoller.setVoltage(SmartDashboard.getNumber(LOW_POWER_LAUNCHING_LAUNCHER_KEY, LOW_POWER_LAUNCHING_LAUNCHER_VOLTAGE));
-  }
-
-  /**
-   * Creates a command that runs lowPowerSpinUp() while scheduled.
-   * @return a low-power spinup command
-   */
-  public Command lowPowerSpinUpCommand() {
-    return this.run(() -> lowPowerSpinUp());
-  }
-
-  /**
-   * Creates a command that runs lowPowerLaunch() while scheduled.
-   * @return a low-power launch command
-   */
-  public Command lowPowerLaunchCommand() {
-    return this.run(() -> lowPowerLaunch());
+  @Override
+  public void periodic() {
+    // This method will be called once per scheduler run
   }
 }

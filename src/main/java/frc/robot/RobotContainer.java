@@ -7,8 +7,9 @@ package frc.robot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 
-import static frc.robot.Constants.DriverConstants.*;
+import static frc.robot.Constants.OperatorConstants.*;
 import static frc.robot.Constants.FuelConstants.*;
 import frc.robot.commands.Autos;
 import frc.robot.subsystems.CANDriveSubsystem;
@@ -26,9 +27,8 @@ public class RobotContainer {
   private final CANDriveSubsystem driveSubsystem = new CANDriveSubsystem();
   private final CANFuelSubsystem ballSubsystem = new CANFuelSubsystem();
 
-  // The driver's controller
-  private final CommandPS5Controller driverController = new CommandPS5Controller(
-      DRIVER_CONTROLLER_PORT);
+  // The controller for both driver and operator
+  private final CommandPS5Controller controller = new CommandPS5Controller(CONTROLLER_PORT);
 
   // The autonomous chooser
   private final SendableChooser<Command> autoChooser = new SendableChooser<>();
@@ -57,40 +57,35 @@ public class RobotContainer {
    * joysticks}.
    */
   private void configureBindings() {
-    // While the left bumper on driver controller is held, intake Fuel
-    driverController.L1()
-        .whileTrue(ballSubsystem.runEnd(() -> ballSubsystem.intake(), () -> ballSubsystem.stop()));
 
-    // While the right bumper on the driver controller is held, spin up for 1
+    // While the L1 button on controller is held, intake Fuel
+    controller.L1()
+        .whileTrue(ballSubsystem.runEnd(() -> ballSubsystem.intake(), () -> ballSubsystem.stop()));
+    // While the Square button on controller is held, hopper intake Fuel (half power)
+    controller.square()
+        .whileTrue(ballSubsystem.hopperIntakeCommand());
+    // While the R1 button on the controller is held, spin up for 1
     // second, then launch fuel. When the button is released, stop.
-    driverController.R1()
+    controller.R1()
         .whileTrue(ballSubsystem.spinUpCommand().withTimeout(SPIN_UP_SECONDS)
             .andThen(ballSubsystem.launchCommand())
             .finallyDo(() -> ballSubsystem.stop()));
-
-    // While the triangle button on the driver controller is held, spin up at low power,
-    // then launch fuel. When the button is released, stop.
-    driverController.triangle()
-        .whileTrue(ballSubsystem.lowPowerSpinUpCommand().withTimeout(LOW_POWER_SPIN_UP_SECONDS)
-            .andThen(ballSubsystem.lowPowerLaunchCommand())
-            .finallyDo(() -> ballSubsystem.stop()));
-
-    // While the cross button is held on the driver controller, eject fuel back out
+    // While the Cross button is held on the controller, eject fuel back out
     // the intake
-    driverController.cross()
+    controller.cross()
         .whileTrue(ballSubsystem.runEnd(() -> ballSubsystem.eject(), () -> ballSubsystem.stop()));
 
     // Set the default command for the drive subsystem to the command provided by
-    // factory with the values provided by the joystick axes on the driver
-    // controller. The Y axis of the controller is inverted so that pushing the
+    // factory with the values provided by the joystick axes on the controller.
+    // The L stick Y axis of the controller is inverted so that pushing the
     // stick away from you (a negative value) drives the robot forwards (a positive
-    // value). The X-axis is also inverted so a positive value (stick to the right)
+    // value). The R stick X-axis is also inverted so a positive value (stick to the right)
     // results in clockwise rotation (front of the robot turning right). Both axes
     // are also scaled down so the rotation is more easily controllable.
     driveSubsystem.setDefaultCommand(
         driveSubsystem.driveArcade(
-            () -> -driverController.getLeftY() * DRIVE_SCALING,
-            () -> -driverController.getRightX() * ROTATION_SCALING));
+            () -> -controller.getLeftY() * DRIVE_SCALING,
+            () -> -controller.getRightX() * ROTATION_SCALING));
   }
 
   /**
