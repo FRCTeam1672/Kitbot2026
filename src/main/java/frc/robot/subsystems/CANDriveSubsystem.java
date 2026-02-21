@@ -8,48 +8,83 @@ import java.util.function.DoubleSupplier;
 
 import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import static frc.robot.Constants.DriveConstants.*;
 
 public class CANDriveSubsystem extends SubsystemBase {
+  private static final double VOLTAGE_SATURATION = 12.0;
+  private static final int CONFIG_TIMEOUT_MS = 250;
+
   private final WPI_TalonSRX leftLeader;
-  private final WPI_TalonSRX leftFollower;
+  private final WPI_VictorSPX leftFollower;
   private final WPI_TalonSRX rightLeader;
-  private final WPI_TalonSRX rightFollower;
+  private final WPI_VictorSPX rightFollower;
+
+  private final DifferentialDrive drive;
 
   public CANDriveSubsystem() {
-    // create motor controllers for drive
+    // Create motor controllers for drive
     leftLeader = new WPI_TalonSRX(LEFT_LEADER_ID);
-    leftFollower = new WPI_TalonSRX(LEFT_FOLLOWER_ID);
+    leftFollower = new WPI_VictorSPX(LEFT_FOLLOWER_ID);
     rightLeader = new WPI_TalonSRX(RIGHT_LEADER_ID);
-    rightFollower = new WPI_TalonSRX(RIGHT_FOLLOWER_ID);
+    rightFollower = new WPI_VictorSPX(RIGHT_FOLLOWER_ID);
 
     // Reset controllers to a known state
-    leftLeader.configFactoryDefault();
-    leftFollower.configFactoryDefault();
-    rightLeader.configFactoryDefault();
-    rightFollower.configFactoryDefault();
+    resetMotors();
 
-    // Configure voltage compensation for all motors
-    configureVoltageCompensation(leftLeader);
-    configureVoltageCompensation(leftFollower);
-    configureVoltageCompensation(rightLeader);
-    configureVoltageCompensation(rightFollower);
+    // Configure voltage compensation for consistent behavior across battery voltages
+    configureVoltageCompensation();
 
-    // Configure followers
+    // Configure followers to follow leaders
     leftFollower.follow(leftLeader);
     rightFollower.follow(rightLeader);
 
-    // Set neutral mode and inversion so positive speeds drive the robot forward.
+    // Configure neutral mode and motor inversion for forward motion
+    configureMotorProperties();
+
+    // Set up differential drive class
+    drive = new DifferentialDrive(leftLeader, rightLeader);
+  }
+
+  /**
+   * Reset all motor controllers to factory defaults.
+   */
+  private void resetMotors() {
+    leftLeader.configFactoryDefault(CONFIG_TIMEOUT_MS);
+    leftFollower.configFactoryDefault(CONFIG_TIMEOUT_MS);
+    rightLeader.configFactoryDefault(CONFIG_TIMEOUT_MS);
+    rightFollower.configFactoryDefault(CONFIG_TIMEOUT_MS);
+  }
+
+  /**
+   * Configure voltage compensation for all motor controllers to improve
+   * consistency across varying battery voltages.
+   */
+  private void configureVoltageCompensation() {
+    leftLeader.configVoltageCompSaturation(VOLTAGE_SATURATION, CONFIG_TIMEOUT_MS);
+    leftLeader.enableVoltageCompensation(true);
+    rightLeader.configVoltageCompSaturation(VOLTAGE_SATURATION, CONFIG_TIMEOUT_MS);
+    rightLeader.enableVoltageCompensation(true);
+    leftFollower.configVoltageCompSaturation(VOLTAGE_SATURATION, CONFIG_TIMEOUT_MS);
+    leftFollower.enableVoltageCompensation(true);
+    rightFollower.configVoltageCompSaturation(VOLTAGE_SATURATION, CONFIG_TIMEOUT_MS);
+    rightFollower.enableVoltageCompensation(true);
+  }
+
+  /**
+   * Configure neutral mode and motor inversion.
+   * Left side is inverted so positive speeds drive the robot forward on both sides.
+   */
+  private void configureMotorProperties() {
     leftLeader.setNeutralMode(NeutralMode.Brake);
-    rightLeader.setNeutralMode(NeutralMode.Brake);
     leftFollower.setNeutralMode(NeutralMode.Brake);
+    rightLeader.setNeutralMode(NeutralMode.Brake);
     rightFollower.setNeutralMode(NeutralMode.Brake);
 
-    // Invert the left side so forward is positive on both sides
     leftLeader.setInverted(true);
     leftFollower.setInverted(true);
     rightLeader.setInverted(false);
@@ -57,53 +92,22 @@ public class CANDriveSubsystem extends SubsystemBase {
   }
 
   /**
-   * Configures voltage compensation for a motor controller.
+   * Command factory to create a drive command with joystick inputs.
+   * Applies right side power scaling to compensate for mechanical imbalance.
    * 
-   * @param motor the motor controller to configure
-   */
-  private void configureVoltageCompensation(WPI_TalonSRX motor) {
-    motor.configVoltageCompSaturation(12.0, 250);
-    motor.enableVoltageCompensation(true);
-  }
-
-  @Override
-  public void periodic() {
-    // Log drivetrain motor outputs for debugging and tuning
-    SmartDashboard.putNumber(LEFTSIDE_OUTPUT_KEY, leftLeader.get());
-    SmartDashboard.putNumber(RIGHTSIDE_OUTPUT_KEY, rightLeader.get());
-  }
-
-  /**
-   * Creates a command to drive the robot using arcade drive with joystick input.
-   * Applies deadzone filtering to prevent drift and power scaling for easier control.
-   * 
-   * @param xSpeed supplier providing forward/backward speed (-1.0 to 1.0)
-   * @param zRotation supplier providing rotation speed (-1.0 to 1.0)
-   * @return a command that drives the robot in arcade mode
+   * @param xSpeed forward/backward speed supplier
+   * @param zRotation rotation speed supplier
+   * @return a drive command
    */
   public Command driveArcade(DoubleSupplier xSpeed, DoubleSupplier zRotation) {
     return this.run(() -> {
-      double xSpeedValue = applyDeadzone(xSpeed.getAsDouble());
-      double zRotationValue = applyDeadzone(zRotation.getAsDouble());
+      double speed = xSpeed.getAsDouble();
+      double rotation = zRotation.getAsDouble();
+      drive.arcadeDrive(speed, rotation);
       
-      // Apply right side power scaling to compensate for mechanical imbalance
-      rightLeader.set(limitOutput((xSpeedValue + zRotationValue) * RIGHT_SIDE_POWER_SCALING));
-      leftLeader.set(limitOutput(xSpeedValue - zRotationValue));
+      // Apply right side power scaling for mechanical balance
+      rightLeader.set(rightLeader.get() * RIGHT_SIDE_POWER_SCALING);
+      rightFollower.set(rightFollower.get() * RIGHT_SIDE_POWER_SCALING);
     });
-  }
-
-  /**
-   * Applies deadzone filtering to joystick input to prevent drift.
-   * Values within the deadzone threshold are treated as zero.
-   * 
-   * @param value the raw joystick value
-   * @return the deadzone-filtered value
-   */
-  private double applyDeadzone(double value) {
-    return Math.abs(value) < JOYSTICK_DEADZONE ? 0.0 : value;
-  }
-
-  private double limitOutput(double value) {
-    return Math.max(-1.0, Math.min(1.0, value));
   }
 }
