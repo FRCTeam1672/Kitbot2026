@@ -6,6 +6,8 @@ package frc.robot.subsystems;
 
 import java.util.function.DoubleSupplier;
 
+import com.ctre.phoenix.motorcontrol.InvertType;
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 
@@ -29,12 +31,20 @@ public class CANDriveSubsystem extends SubsystemBase {
     rightLeader = new WPI_TalonSRX(RIGHT_LEADER_ID);
     rightFollower = new WPI_VictorSPX(RIGHT_FOLLOWER_ID);
 
+    // Coast mode on all drive motors
+    leftLeader.setNeutralMode(NeutralMode.Coast);
+    leftFollower.setNeutralMode(NeutralMode.Coast);
+    rightLeader.setNeutralMode(NeutralMode.Coast);
+    rightFollower.setNeutralMode(NeutralMode.Coast);
+
     // Set up differential drive with Talon SRX controllers
     drive = new DifferentialDrive(leftLeader, rightLeader);
 
     // Configure followers to follow their leaders
     leftFollower.follow(leftLeader);
+    leftFollower.setInverted(InvertType.FollowMaster);
     rightFollower.follow(rightLeader);
+    rightFollower.setInverted(InvertType.FollowMaster);
 
     // Invert left side so that positive values drive both sides forward
     leftLeader.setInverted(true);
